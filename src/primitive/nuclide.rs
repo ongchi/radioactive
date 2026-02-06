@@ -1,8 +1,7 @@
 use std::fmt::Display;
-use std::hash::Hash;
 use std::str::FromStr;
 
-use chumsky::prelude::{end, Parser};
+use chumsky::prelude::*;
 use float_pretty_print::PrettyPrintFloat;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
@@ -42,10 +41,8 @@ impl Nuclide {
     }
 
     pub fn state(&self) -> Option<MetastableState> {
-        match self.id() {
-            Some(id) => FromPrimitive::from_u8((id % 10) as u8),
-            None => None,
-        }
+        self.id()
+            .and_then(|id| FromPrimitive::from_u8((id % 10) as u8))
     }
 }
 
@@ -53,18 +50,15 @@ impl Display for Nuclide {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::WithId(_) => {
-                write!(
-                    f,
-                    "{}-{}{}",
-                    Symbol::try_from(self.z().unwrap()).unwrap(),
-                    self.a().unwrap(),
-                    self.state().map_or("".to_string(), |m| m.to_string())
-                )?;
+                let symbol = Symbol::try_from(self.z().unwrap()).unwrap();
+                write!(f, "{}-{}", symbol, self.a().unwrap())?;
+                if let Some(state) = self.state() {
+                    write!(f, "{}", state)?;
+                }
+                Ok(())
             }
-            Self::FissionProducts => write!(f, "various")?,
+            Self::FissionProducts => write!(f, "various"),
         }
-
-        Ok(())
     }
 }
 
@@ -75,6 +69,7 @@ impl FromStr for Nuclide {
         nuclide()
             .then_ignore(end())
             .parse(s.trim())
+            .into_result()
             .map_err(|_| Error::InvalidNuclide(s.to_string()))
     }
 }
@@ -104,7 +99,7 @@ pub mod decay_mode {
     use std::ops::BitOr;
     use std::str::FromStr;
 
-    use chumsky::prelude::{end, Parser};
+    use chumsky::prelude::*;
     use flagset::{flags, FlagSet};
     use serde::{de::Visitor, Deserialize};
 
@@ -136,6 +131,7 @@ pub mod decay_mode {
             decaymode()
                 .then_ignore(end())
                 .parse(s)
+                .into_result()
                 .map_err(|e| e.into())
         }
     }
@@ -166,29 +162,13 @@ pub mod decay_mode {
         type Output = Self;
 
         fn bitor(self, rhs: DecayMode) -> Self::Output {
-            let mut mode = self;
-            mode.0 = self.0 | rhs;
-            mode
+            Self(self.0 | rhs)
         }
     }
 
     impl std::fmt::Display for DecayModeSet {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            let mut modes = vec![];
-            if self.0.contains(DecayMode::Alpha) {
-                modes.push(DecayMode::Alpha.to_string());
-            } else if self.0.contains(DecayMode::BetaMinus) {
-                modes.push(DecayMode::BetaMinus.to_string());
-            } else if self.0.contains(DecayMode::BetaPlus) {
-                modes.push(DecayMode::BetaPlus.to_string());
-            } else if self.0.contains(DecayMode::ElectronCapture) {
-                modes.push(DecayMode::ElectronCapture.to_string());
-            } else if self.0.contains(DecayMode::IsometricTransition) {
-                modes.push(DecayMode::IsometricTransition.to_string());
-            } else if self.0.contains(DecayMode::SpontaneousFission) {
-                modes.push(DecayMode::SpontaneousFission.to_string());
-            }
-
+            let modes: Vec<String> = self.0.into_iter().map(|m| m.to_string()).collect();
             write!(f, "{}", modes.join("|"))
         }
     }
@@ -210,12 +190,11 @@ pub mod decay_mode {
             where
                 E: serde::de::Error,
             {
-                let mode = decaymodeflags()
+                decaymodeflags()
                     .then_ignore(end())
                     .parse(v)
-                    .map_err(|_| serde::de::Error::custom("Invalid decay mode"))?;
-
-                Ok(mode)
+                    .into_result()
+                    .map_err(|_| serde::de::Error::custom("Invalid decay mode"))
             }
         }
 
@@ -297,17 +276,15 @@ impl FromStr for HalfLife {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        halflife().then_ignore(end()).parse(s).map_err(|e| e.into())
+        halflife().then_ignore(end()).parse(s).into_result().map_err(|e| e.into())
     }
 }
 
 impl std::fmt::Display for HalfLife {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let number_str = PrettyPrintFloat(self.value).to_string();
-        match number_str.strip_suffix(".0") {
-            Some(number_str) => write!(f, "{} {}", number_str, self.unit),
-            None => write!(f, "{} {}", number_str, self.unit),
-        }
+        let number_str = number_str.strip_suffix(".0").unwrap_or(&number_str);
+        write!(f, "{} {}", number_str, self.unit)
     }
 }
 

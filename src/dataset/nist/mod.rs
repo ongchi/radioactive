@@ -1,11 +1,11 @@
 mod reader;
 
-use std::path::Path;
-use std::{collections::BTreeMap, path::PathBuf};
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
+use once_cell::sync::OnceCell;
 
 use fixed_width_derive::FixedWidth;
 use num_traits::FromPrimitive;
-use once_cell::sync::OnceCell;
 use serde::Deserialize;
 
 use crate::error::Error;
@@ -14,7 +14,7 @@ use crate::primitive::notation::Material;
 use crate::primitive::Symbol;
 use reader::{MassAttenCoefReader, MaterialConstantReader};
 
-static MATEAIAL_CONSTANTS: OnceCell<BTreeMap<Symbol, MaterialConstant>> = OnceCell::new();
+static MATERIAL_CONSTANTS: OnceCell<BTreeMap<Symbol, MaterialConstant>> = OnceCell::new();
 static ATTENUATION_COEF: OnceCell<BTreeMap<Symbol, BTreeMap<Energy, MassAttenCoef>>> =
     OnceCell::new();
 
@@ -102,7 +102,7 @@ impl NistMassAttenCoef {
     }
 
     pub fn material_constants(&self) -> Result<&BTreeMap<Symbol, MaterialConstant>, Error> {
-        MATEAIAL_CONSTANTS.get_or_try_init(|| {
+        MATERIAL_CONSTANTS.get_or_try_init(|| {
             MaterialConstantReader::new(&self.path.join("material_constants"))?.read()
         })
     }

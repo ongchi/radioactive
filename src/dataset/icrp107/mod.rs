@@ -2,9 +2,9 @@ mod ndx;
 mod reader;
 pub mod spectrum;
 
-use once_cell::sync::OnceCell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use once_cell::sync::OnceCell;
 
 use crate::error::Error;
 use crate::primitive::attr::{NuclideDecayMode, NuclideHalfLife, NuclideProgeny};

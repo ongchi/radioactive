@@ -78,7 +78,7 @@ where
 
     // Bateman Equation
     pub fn bateman_eq(&self, nuclide: Nuclide, dt: f64) -> Option<BTreeMap<Nuclide, f64>> {
-        if let Some(cache) = self.cached_vars(nuclide) {
+        self.cached_vars(nuclide).map(|cache| {
             let mut res = BTreeMap::new();
             for (&nuc, vars) in cache.iter() {
                 for (br, lamb) in vars {
@@ -94,11 +94,8 @@ where
                             .sum::<f64>();
                 }
             }
-
-            Some(res)
-        } else {
-            None
-        }
+            res
+        })
     }
 
     // Variables for calculate with Bateman Equation
@@ -117,7 +114,6 @@ where
             while let Some((parent, br, lambda)) = stack.pop() {
                 brs_lambs
                     .entry(parent)
-                    // .or_insert(vec![])
                     .or_default()
                     .push((br.clone(), lambda.clone()));
 
@@ -186,7 +182,7 @@ mod test {
         fn progeny(&self, nuclide: Nuclide) -> Result<Vec<Progeny>, Error> {
             self.progeny
                 .get(&nuclide)
-                .map(|v| v.clone())
+                .cloned()
                 .ok_or(Error::InvalidNuclide(nuclide.to_string()))
         }
     }

@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::str::FromStr;
 use std::sync::Arc;
 
-use chumsky::prelude::{end, Parser};
+use chumsky::prelude::*;
 use num_derive::FromPrimitive;
 use num_traits::FromPrimitive;
 use serde::{Deserialize, Serialize};
@@ -49,18 +49,18 @@ impl Display for Compound {
         match self {
             Self::Element(symbol, n) => {
                 write!(f, "{}", symbol)?;
-                if n != &1 {
+                if *n != 1 {
                     write!(f, "{}", n)?;
                 }
             }
             Self::Molecule(g, mul) => {
-                if mul != &1 {
+                if *mul != 1 {
                     write!(f, "(")?;
                 }
                 for el in g {
                     el.fmt(f)?;
                 }
-                if mul != &1 {
+                if *mul != 1 {
                     write!(f, "){}", mul)?;
                 }
             }
@@ -73,7 +73,7 @@ impl FromStr for Compound {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        compound().then_ignore(end()).parse(s).map_err(|e| e.into())
+        compound().then_ignore(end()).parse(s).into_result().map_err(|e| e.into())
     }
 }
 
@@ -82,11 +82,11 @@ impl Compound {
         let mut comp = BTreeMap::new();
 
         match self {
-            Self::Element(symbol, n) => *comp.entry(*symbol).or_insert(0) += n,
+            Self::Element(symbol, n) => *comp.entry(*symbol).or_default() += n,
             Self::Molecule(g, mul) => {
                 for el in g {
-                    for (symbol, n) in el.composition().iter() {
-                        *comp.entry(*symbol).or_insert(0) += mul * n;
+                    for (symbol, n) in &el.composition() {
+                        *comp.entry(*symbol).or_default() += mul * n;
                     }
                 }
             }
@@ -129,14 +129,12 @@ where
             .collect();
 
         let mut weight_fraction = BTreeMap::new();
-        let mut tot = 0f64;
-
         for (&symbol, &n) in &composition {
             let mass = n * self.data.atomic_mass(symbol)?;
-            tot += mass;
             weight_fraction.insert(symbol, mass);
         }
 
+        let tot: f64 = weight_fraction.values().sum();
         for f in weight_fraction.values_mut() {
             *f /= tot;
         }
@@ -149,11 +147,7 @@ where
 
     pub fn weights(mut self, weights: BTreeMap<Symbol, f64>) -> Result<Self, Error> {
         let mut weight_fraction = weights;
-        let mut tot = 0f64;
-
-        for w in weight_fraction.values() {
-            tot += w;
-        }
+        let tot: f64 = weight_fraction.values().sum();
 
         for w in weight_fraction.values_mut() {
             *w /= tot;
@@ -195,15 +189,14 @@ where
     }
 
     pub fn build(self) -> Result<Material, Error> {
-        if self.weight.is_some() && self.density.is_some() {
-            Ok(Material {
+        match (self.weight, self.density) {
+            (Some(weight), Some(density)) => Ok(Material {
                 composition: self.composition,
                 weight_fraction: self.weight_fraction,
-                density: self.density.unwrap(),
-                weight: self.weight.unwrap(),
-            })
-        } else {
-            Err(anyhow::anyhow!("Data incomplete").into())
+                density,
+                weight,
+            }),
+            _ => Err(anyhow::anyhow!("Data incomplete").into()),
         }
     }
 }

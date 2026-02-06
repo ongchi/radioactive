@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use chumsky::Parser;
+use chumsky::prelude::Parser;
 use mdbsql::Connection;
 
 use crate::dataset::radtoolbox::utils::AsAgeDepPhantomOrgan;
@@ -43,7 +43,10 @@ impl DcfIngestion for Icrp72 {
         for row in rows {
             let value = row.get(0)?;
             let unit = "Sv/Bq".to_string();
-            let (f1, compound) = gi_absorption_factor().parse(row.get::<String>(1)?)?;
+            let (f1, compound) = {
+                let s = row.get::<String>(1)?;
+                let r = gi_absorption_factor().parse(&s).into_result()?; r
+            };
             res.push(DcfValue {
                 value,
                 unit,
@@ -84,7 +87,10 @@ impl DcfInhalation for Icrp72 {
             let value = row.get(0)?;
             let unit = "Sv/Bq".to_string();
             let respiratory_tract_attr = Some(RespiratoryTractAttr::ICRP66(row.get(1)?));
-            let (f1, compound) = gi_absorption_factor().parse(row.get::<String>(2)?)?;
+            let (f1, compound) = {
+                let s = row.get::<String>(2)?;
+                let r = gi_absorption_factor().parse(&s).into_result()?; r
+            };
             res.push(DcfValue {
                 value,
                 unit,

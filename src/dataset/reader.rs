@@ -21,6 +21,6 @@ impl FileReader {
 
     pub fn read_line(&mut self, buf: &mut String) -> Result<usize, Error> {
         buf.clear();
-        self.0.read_line(buf).map_err(std::convert::Into::into)
+        self.0.read_line(buf).map_err(Into::into)
     }
 }

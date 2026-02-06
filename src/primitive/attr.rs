@@ -77,29 +77,20 @@ pub trait EffectiveAtomicNumber {
 
 // Effective atomic number
 pub fn z_eff(composition: &BTreeMap<Symbol, f64>) -> f64 {
-    let mut composition = composition.clone();
-    let mut tot_n = 0f64;
+    let weighted: BTreeMap<Symbol, f64> = composition
+        .iter()
+        .map(|(&symbol, &n)| (symbol, n * (symbol as u8) as f64))
+        .collect();
 
-    // composition normalization
-    for (symbol, n) in &mut composition {
-        let z = (*symbol as u8) as f64;
-        *n *= z;
-    }
+    let tot_n: f64 = weighted.values().sum();
 
-    for n in composition.values() {
-        tot_n += n;
-    }
-
-    for n in composition.values_mut() {
-        *n /= tot_n
-    }
-
-    let mut zeff = 0f64;
-
-    for (&symbol, &f) in &composition {
-        let z = (symbol as u8) as f64;
-        zeff += f * z.powf(2.94);
-    }
+    let zeff: f64 = weighted
+        .iter()
+        .map(|(&symbol, &n)| {
+            let z = (symbol as u8) as f64;
+            (n / tot_n) * z.powf(2.94)
+        })
+        .sum();
 
     zeff.powf(2.94f64.recip())
 }

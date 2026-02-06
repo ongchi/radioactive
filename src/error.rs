@@ -1,5 +1,3 @@
-use chumsky::prelude::Simple;
-
 use crate::primitive::attr::Energy;
 
 #[derive(thiserror::Error, Debug)]
@@ -42,9 +40,13 @@ pub enum Error {
     MdbSqlError(#[from] mdbsql::Error),
 }
 
-// fixme: remove this impl
-impl From<Vec<Simple<char>>> for Error {
-    fn from(e: Vec<Simple<char>>) -> Self {
-        e.into()
+impl From<Vec<chumsky::prelude::Rich<'_, char>>> for Error {
+    fn from(e: Vec<chumsky::prelude::Rich<'_, char>>) -> Self {
+        let msg = e
+            .iter()
+            .map(|e| e.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
+        Error::Unexpected(anyhow::anyhow!("parse error: {}", msg))
     }
 }

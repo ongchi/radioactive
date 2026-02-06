@@ -15,15 +15,11 @@ pub struct ChainNode {
 
 impl std::fmt::Display for ChainNode {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}\n{}",
-            self.nuclide,
-            match self.half_life {
-                Some(t) => t.to_string(),
-                None => "".to_string(),
-            }
-        )
+        write!(f, "{}", self.nuclide)?;
+        if let Some(t) = self.half_life {
+            write!(f, "\n{}", t)?;
+        }
+        Ok(())
     }
 }
 
@@ -36,14 +32,8 @@ pub struct ChainEdge {
 impl std::fmt::Display for ChainEdge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{}", PrettyPrintFloat(self.branch_rate))?;
-        for (i, mode) in self.decay_mode.0.into_iter().enumerate() {
-            if i == 0 {
-                write!(f, "{}", mode)?;
-            } else {
-                write!(f, " or {}", mode)?;
-            }
-        }
-        write!(f, "")
+        let modes: Vec<String> = self.decay_mode.0.into_iter().map(|m| m.to_string()).collect();
+        write!(f, "{}", modes.join(" or "))
     }
 }
 
@@ -98,20 +88,18 @@ where
                     if let Ok(progeny) = self.data.progeny(parent) {
                         let p_node = get_or_insert_node(parent);
                         for daughter in progeny {
-                            {
-                                if !visited.contains(&daughter.nuclide) {
-                                    stack.push(daughter.nuclide)
-                                }
-
-                                let d_node = get_or_insert_node(daughter.nuclide);
-                                let weight = ChainEdge {
-                                    branch_rate: daughter.branch_rate,
-                                    decay_mode: daughter.decay_mode,
-                                };
-                                edges.push((p_node, d_node, weight));
+                            if !visited.contains(&daughter.nuclide) {
+                                stack.push(daughter.nuclide)
                             }
+
+                            let d_node = get_or_insert_node(daughter.nuclide);
+                            let weight = ChainEdge {
+                                branch_rate: daughter.branch_rate,
+                                decay_mode: daughter.decay_mode,
+                            };
+                            edges.push((p_node, d_node, weight));
                         }
-                    };
+                    }
                 }
                 Nuclide::FissionProducts => {}
             }
@@ -186,8 +174,7 @@ mod test {
     #[test]
     fn chain_builder() {
         let data = Arc::new(TestData::new());
-        // let root = data.mo99.clone();
-        let chain = DecayChainBuilder::new(data.clone()).build(data.mo99.clone());
+        let chain = DecayChainBuilder::new(data.clone()).build(data.mo99);
 
         let nodes = chain.raw_nodes();
         assert_eq!(nodes.len(), 2);
