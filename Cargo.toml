@@ -3,6 +3,11 @@ name = "radioactive"
 version = "0.0.1"
 edition = "2021"
 
+[features]
+default = ["radtoolbox"]
+# Radiological Toolbox: Access databases through mdbsql (C library, not for WebAssembly)
+radtoolbox = ["dep:mdbsql"]
+
 [dependencies]
 anyhow = "1"
 chumsky = "0.12.0"
@@ -10,7 +15,7 @@ fixed_width = "0.6.0"
 fixed_width_derive = "0.6.0"
 flagset = "0.4.7"
 float-pretty-print = "0.1.1"
-mdbsql = "0.1.7"
+mdbsql = { version = "0.1.7", optional = true }
 num-derive = "0.4"
 num-traits = "0.2"
 once_cell = "1.21.3"

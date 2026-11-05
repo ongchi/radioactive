@@ -1,56 +1,35 @@
 use std::collections::BTreeMap;
-use std::path::Path;
 
-use super::super::reader::FileReader;
-use super::{MassAttenCoefRecord, MaterialConstant, MaterialConstantRecord};
+use super::{MassAttenCoef, MassAttenCoefRecord, MaterialConstant, MaterialConstantRecord};
 
 use crate::error::Error;
 use crate::primitive::Symbol;
 
-pub struct MaterialConstantReader {
-    reader: FileReader,
+/// Rows of a table after its two header lines
+fn table_rows(text: &str) -> impl Iterator<Item = &str> {
+    text.lines().skip(2).filter(|line| !line.trim().is_empty())
 }
 
-impl MaterialConstantReader {
-    pub fn new(path: &Path) -> Result<Self, Error> {
-        let reader = FileReader::new(path)?.skip_lines(2)?;
-        Ok(Self { reader })
+pub fn read_material_constants(text: &str) -> Result<BTreeMap<Symbol, MaterialConstant>, Error> {
+    let mut content = BTreeMap::new();
+
+    for line in table_rows(text) {
+        let row: MaterialConstantRecord =
+            fixed_width::from_str(line).map_err(|e| Error::Unexpected(e.into()))?;
+        content.insert(row.symbol, row.into());
     }
 
-    pub fn read(&mut self) -> Result<BTreeMap<Symbol, MaterialConstant>, Error> {
-        let mut content = BTreeMap::new();
-
-        let mut buf = String::new();
-        while self.reader.read_line(&mut buf)? != 0 {
-            let row: MaterialConstantRecord =
-                fixed_width::from_str(&buf).map_err(|e| Error::Unexpected(e.into()))?;
-            content.insert(row.symbol, row.into());
-        }
-
-        Ok(content)
-    }
+    Ok(content)
 }
 
-pub struct MassAttenCoefReader {
-    reader: FileReader,
-}
-
-impl MassAttenCoefReader {
-    pub fn new(path: &Path, z: u8) -> Result<Self, Error> {
-        let reader = FileReader::new(&path.join(format!("{:02}", z)))?.skip_lines(2)?;
-        Ok(Self { reader })
-    }
-
-    pub fn read(&mut self) -> Result<Vec<MassAttenCoefRecord>, Error> {
-        let mut content = vec![];
-
-        let mut buf = String::new();
-        while self.reader.read_line(&mut buf)? != 0 {
-            let row: MassAttenCoefRecord =
-                fixed_width::from_str(&buf).map_err(|e| Error::Unexpected(e.into()))?;
-            content.push(row);
-        }
-
-        Ok(content)
-    }
+/// Rows in the order of the table (increasing energy); an absorption edge has two
+/// rows with the same energy, below and above the edge
+pub fn read_mass_atten_coef(text: &str) -> Result<Vec<MassAttenCoef>, Error> {
+    table_rows(text)
+        .map(|line| {
+            fixed_width::from_str::<MassAttenCoefRecord>(line)
+                .map(Into::into)
+                .map_err(|e| Error::Unexpected(e.into()))
+        })
+        .collect()
 }

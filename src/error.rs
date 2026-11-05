@@ -36,6 +36,9 @@ pub enum Error {
     InvalidFilePath,
     #[error("invalid mdb file")]
     InvalidMdbFile,
+    #[error("energy out of the table range: {0} eV")]
+    EnergyOutOfRange(f64),
+    #[cfg(feature = "radtoolbox")]
     #[error(transparent)]
     MdbSqlError(#[from] mdbsql::Error),
 }
