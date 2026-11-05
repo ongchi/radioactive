@@ -69,7 +69,7 @@ def icrp107():
 
 def nist_material_constants():
     materials_url = "https://physics.nist.gov/PhysRefData/XrayMassCoef/tab1.html"
-    html = requests.get(materials_url).text.replace("\r\n", "")
+    html = re.sub(r"\r?\n", "", requests.get(materials_url).text)
     html_table = re.search(r"<TABLE.*>.*</TABLE>", html).group()
     html_rows = re.findall(r"<TR>(.*?)</TR>", html_table)[3:]
 
@@ -107,7 +107,7 @@ def nist_mass_attenuation_coefficient():
     with open("{}/material_constants".format(data_path), "w") as f:
         f.write(nist_material_constants())
 
-    for z in range(1, 2):
+    for z in range(1, 93):
         with open("{}/{:02}".format(data_path, z), "w") as f:
             f.write(nist_elemental_media(z))
 
