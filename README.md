@@ -10,8 +10,9 @@ This library provides wrappers for various data sources for easy access in Rust:
 
 ## Features
 
-- `radtoolbox` (default): the Radiological Toolbox databases. It needs `mdbsql`,
-  a C library, thus it does not compile for WebAssembly. With
+- `radtoolbox` (default): the Radiological Toolbox databases. It uses `mdbsql`
+  with its feature `bundled` (mdbtools compiled from source: only a C compiler,
+  no GLib or pkg-config), thus it does not compile for WebAssembly. With
   `--no-default-features`, the NIST part compiles for `wasm32-unknown-unknown`.
 
 ## X-ray mass attenuation coefficients
